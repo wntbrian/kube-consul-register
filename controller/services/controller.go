@@ -392,7 +392,7 @@ func (c *Controller) eventAddFunc(obj interface{}) error {
 	}
 
 	var nodesIPs []string
-	var ports []int32
+	var ports []ServicePorts
 	var err error
 
 	switch serviceType := obj.(*v1.Service).Spec.Type; serviceType {
@@ -408,7 +408,12 @@ func (c *Controller) eventAddFunc(obj interface{}) error {
 		}
 		for _, port := range obj.(*v1.Service).Spec.Ports {
 			if port.Protocol == v1.ProtocolTCP {
-				ports = append(ports, port.NodePort)
+				p := ServicePorts{
+					port: port.Port,
+					nodePort: port.NodePort,
+					targetPort: port.TargetPort,
+				}
+				ports = append(ports, p)
 			}
 		}
 
@@ -469,7 +474,7 @@ func (c *Controller) eventDeleteFunc(obj interface{}) error {
 	}
 
 	var nodesIPs []string
-	var ports []int32
+	var ports []ServicePorts
 	var err error
 
 	switch serviceType := obj.(*v1.Service).Spec.Type; serviceType {
@@ -485,7 +490,12 @@ func (c *Controller) eventDeleteFunc(obj interface{}) error {
 		}
 		for _, port := range obj.(*v1.Service).Spec.Ports {
 			if port.Protocol == v1.ProtocolTCP {
-				ports = append(ports, port.NodePort)
+				p := ServicePorts{
+					port: port.Port,
+					nodePort: port.NodePort,
+					targetPort: port.TargetPort,
+				}
+				ports = append(ports, p)
 			}
 		}
 
@@ -523,10 +533,10 @@ func (c *Controller) getPod(namespace string, podName string) (*v1.Pod, error) {
 	return pod, nil
 }
 
-func (c *Controller) createConsulService(svc *v1.Service, address string, port int32) (*consulapi.AgentServiceRegistration, error) {
+func (c *Controller) createConsulService(svc *v1.Service, address string, port ServicePorts) (*consulapi.AgentServiceRegistration, error) {
 	service := &consulapi.AgentServiceRegistration{}
 
-	service.ID = fmt.Sprintf("%s-%s-%s-%d", svc.ObjectMeta.Name, svc.ObjectMeta.Namespace, address, port)
+	service.ID = fmt.Sprintf("%s-%s-%s-%d", svc.ObjectMeta.Name, svc.ObjectMeta.Namespace, address, port.port)
 	service.Name = svc.ObjectMeta.Name
 
 	//Add K8sTag from configuration
@@ -534,7 +544,7 @@ func (c *Controller) createConsulService(svc *v1.Service, address string, port i
 	service.Tags = append(service.Tags, fmt.Sprintf("uid:%s", svc.ObjectMeta.UID))
 	service.Tags = append(service.Tags, labelsToTags(svc.ObjectMeta.Labels)...)
 
-	service.Port = int(port)
+	service.Port = int(port.nodePort)
 	service.Address = address
 
 	return service, nil
