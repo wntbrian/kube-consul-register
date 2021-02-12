@@ -526,7 +526,7 @@ func (c *Controller) getPod(namespace string, podName string) (*v1.Pod, error) {
 func (c *Controller) createConsulService(svc *v1.Service, address string, port int32) (*consulapi.AgentServiceRegistration, error) {
 	service := &consulapi.AgentServiceRegistration{}
 
-	service.ID = fmt.Sprintf("%s-%s-%s-%d", svc.ObjectMeta.Name, svc.ObjectMeta.UID, address, port)
+	service.ID = fmt.Sprintf("%s-%s-%s-%d", svc.ObjectMeta.Name, svc.ObjectMeta.Namespace, address, port)
 	service.Name = svc.ObjectMeta.Name
 
 	//Add K8sTag from configuration
